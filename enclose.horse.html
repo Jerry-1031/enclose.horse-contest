@@ -1,0 +1,2007 @@
+﻿<!DOCTYPE html>
+<html style="--grass-bg: #186b3b; --game-width: 358.453125px;">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description"
+        content="A daily puzzle game about enclosing horses with walls. Place walls to trap the horse, score big with cherries, apples, and portals!">
+    <meta property="og:title" content="enclose.horse">
+    <meta property="og:description" content="A puzzle game about enclosing horses.">
+    <meta property="og:image" content="https://enclose.horse/og-image.png?v=3">
+    <meta property="og:url" content="https://enclose.horse">
+    <meta name="twitter:card" content="summary_large_image">
+    <title>enclose.horse</title>
+    <link rel="icon" href="https://enclose.horse/favicon.ico" sizes="32x32">
+    <link rel="icon" href="https://enclose.horse/favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="https://enclose.horse/apple-touch-icon.png">
+    <link rel="manifest" href="https://enclose.horse/manifest.json">
+    <link rel="preload" href="https://enclose.horse/fonts/Schoolbell-Regular.woff2" as="font" type="font/woff2"
+        crossorigin="">
+    <script>
+        (function () {
+            var colors = { default: '#186b3b', classic: '#365022', girl: '#7c507e', hot: '#272727' };
+            var theme = localStorage.getItem('enclose_theme') || 'default';
+            document.documentElement.style.setProperty('--grass-bg', colors[theme] || colors.default);
+        })();
+    </script>
+
+    <style>
+        @font-face {
+            font-family: 'Schoolbell';
+            src: url('./fonts/Schoolbell-Regular.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        *:focus {
+            outline: 2px solid #f1c40f;
+            outline-offset: 1px;
+            border-radius: 0;
+        }
+
+        *:focus:not(:focus-visible) {
+            outline: none;
+        }
+
+
+        html {
+            height: 100%;
+            background: var(--grass-bg, #186b3b);
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            min-height: 100%;
+            background: var(--grass-bg, #186b3b);
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* Game viewport - fills exactly one screen */
+        .game-viewport {
+            height: 100vh;
+            height: 100svh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Full-screen grass canvas behind everything */
+        #grassBg {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            background: var(--grass-bg, #186b3b);
+        }
+
+        /* Navbar */
+        .navbar {
+            display: flex;
+            flex-direction: column;
+            padding: 8px 16px;
+            background: transparent;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
+        }
+
+        .navbar-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .navbar-row.navbar-row-subtitle {
+            justify-content: center;
+            margin-top: -2px;
+            margin-bottom: 8px;
+        }
+
+        .navbar-subtitle {
+            font-family: 'Schoolbell', cursive;
+            font-size: 16px;
+            color: #f1c40f;
+            letter-spacing: 1px;
+        }
+
+        .navbar-btn {
+            width: 36px;
+            height: 36px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-family: 'Schoolbell', cursive;
+            font-size: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.15s;
+        }
+
+        @media (hover: hover) {
+            .navbar-btn:hover {
+                color: #f1c40f;
+            }
+        }
+
+        .navbar-btn:active,
+        .navbar-btn.active {
+            color: #f1c40f;
+        }
+
+        /* Hamburger menu icon - three Schoolbell dashes stacked */
+        .navbar-btn.hamburger {
+            flex-direction: column;
+            font-size: 28px;
+            line-height: 0.3;
+            gap: 0;
+        }
+
+        .navbar-btn.hamburger span {
+            letter-spacing: -4px;
+            display: block;
+        }
+
+        .navbar-btn.hamburger span:nth-child(1) {
+            transform: rotate(-1.5deg);
+        }
+
+        .navbar-btn.hamburger span:nth-child(2) {
+            transform: rotate(1deg);
+        }
+
+        .navbar-btn.hamburger span:nth-child(3) {
+            transform: rotate(-0.5deg);
+        }
+
+        .navbar-title {
+            font-family: 'Schoolbell', cursive;
+            font-size: 26px;
+            font-weight: 400;
+            letter-spacing: 2px;
+            color: #fff;
+            cursor: pointer;
+            transition: color 0.15s;
+        }
+
+        @media (min-width: 768px) {
+            .navbar-title {
+                font-size: 32px;
+            }
+        }
+
+        @media (hover: hover) {
+            .navbar-title:hover {
+                color: #f1c40f;
+            }
+        }
+
+        .navbar-title:active {
+            color: #f1c40f;
+        }
+
+        .navbar-title span {
+            display: inline-block;
+        }
+
+        /* Grid area - only as tall as the canvas */
+        .grid-area {
+            flex: 0 0 auto;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            position: relative;
+            z-index: 5;
+        }
+
+        .puzzle-nav-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 6px;
+            box-sizing: border-box;
+            font-family: 'Schoolbell', cursive;
+            font-size: 18px;
+            transform: translateY(-100%);
+        }
+
+        .puzzle-nav {
+            color: #fff;
+            text-decoration: none;
+            cursor: pointer;
+            user-select: none;
+            opacity: 0.7;
+            transition: opacity 0.15s, color 0.15s;
+        }
+
+        .puzzle-nav span {
+            display: inline-block;
+        }
+
+        .puzzle-nav:hover {
+            opacity: 1;
+            color: #f1c40f;
+        }
+
+        .puzzle-nav.disabled {
+            opacity: 0.2;
+            pointer-events: none;
+            cursor: default;
+        }
+
+        .top-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+            margin: 0;
+            padding: 0;
+            height: 0;
+            overflow: visible;
+        }
+
+        .js-ready .top-container {
+            display: flex;
+        }
+
+        canvas#game {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        /* Bottom container - stats + buttons */
+        /* Hidden until JS adds .js-ready to prevent FOUC */
+        .bottom-container {
+            flex-shrink: 0;
+            width: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding: 0px 0px 0px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .js-ready .bottom-container {
+            display: flex;
+        }
+
+        /* Stats row - width set by JS to match grid */
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            font-family: 'Schoolbell', cursive;
+            font-size: 22px;
+            margin-top: 6px;
+            padding: 0 6px;
+            box-sizing: border-box;
+        }
+
+        /* Buttons row */
+        .buttons-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-top: 16px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 400px) {
+            .buttons-row {
+                gap: 8px;
+            }
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-label {
+            color: #fff;
+        }
+
+        .stat-value {
+            color: #fff;
+        }
+
+        .stat-value.escaped {
+            color: #fff;
+        }
+
+        .stats-row-best {
+            margin-top: -4px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+
+        .stats-row-best.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .best-area {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+        }
+
+        .best-area:hover {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .best-area .restore-icon {
+            opacity: 0.7;
+            vertical-align: middle;
+            margin-right: 2px;
+        }
+
+        .best-area:hover .restore-icon {
+            opacity: 1;
+        }
+
+        /* Solution toggle mode - disable parent hover */
+        .best-area.toggle-mode {
+            cursor: default;
+        }
+
+        .best-area.toggle-mode:hover {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .toggle-link {
+            cursor: pointer;
+            transition: color 0.15s;
+        }
+
+        .toggle-link:hover {
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        .toggle-separator {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .stat {
+            transition: text-shadow 0.3s ease-out;
+        }
+
+        .stat.flash-on {
+            text-shadow: 0 0 20px #fff, 0 0 40px #fff !important;
+            transition: none !important;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: 2px solid #fff;
+            background: transparent;
+            font-family: 'Schoolbell', cursive;
+            font-size: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        @media (hover: hover) {
+            .btn:hover:not(:disabled) {
+                color: #f1c40f;
+                border-color: #f1c40f;
+            }
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .settings-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            color: #fff;
+            cursor: pointer;
+            padding: 8px 0;
+        }
+
+        .settings-toggle input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        /* Help Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.visible {
+            display: flex;
+        }
+
+        .wiggly-modal {
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Modal scrollbar */
+        .wiggly-modal-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .wiggly-modal-scroll::-webkit-scrollbar-track {
+            background: linear-gradient(to bottom, transparent 16px, #e8e8e8 16px, #e8e8e8 calc(100% - 16px), transparent calc(100% - 16px));
+            background-clip: content-box;
+            border-left: 3.5px solid transparent;
+            border-right: 3.5px solid transparent;
+            margin: 8px 0;
+        }
+
+        .wiggly-modal-scroll::-webkit-scrollbar-thumb {
+            background: #bbb;
+        }
+
+        .modal {
+            background: #222;
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h2 {
+            margin-bottom: 16px;
+            font-size: 20px;
+        }
+
+        .modal p {
+            color: #aaa;
+            line-height: 1.6;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .modal-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        @media (hover: hover) {
+            .modal-close:hover {
+                color: #fff;
+            }
+        }
+
+        /* Generic modal content classes */
+        .modal h3 {
+            color: #f1c40f;
+            font-size: 16px;
+            margin: 20px 0 12px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modal h3:first-of-type {
+            margin-top: 8px;
+        }
+
+        .modal ul {
+            color: #aaa;
+            line-height: 1.8;
+            font-size: 14px;
+            padding-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .modal-tip {
+            background: rgba(241, 196, 15, 0.1);
+            border-left: 3px solid #f1c40f;
+            padding: 12px 16px;
+            margin: 16px 0;
+            font-size: 13px;
+            color: #ccc;
+        }
+
+        .modal-tip strong {
+            color: #f1c40f;
+        }
+
+        .modal-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #444;
+        }
+
+        .modal-tab {
+            flex: 1;
+            padding: 10px 16px;
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 14px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            transition: color 0.15s;
+        }
+
+        @media (hover: hover) {
+            .modal-tab:hover {
+                color: #ccc;
+            }
+        }
+
+        .modal-tab.active {
+            color: #f1c40f;
+            border-bottom-color: #f1c40f;
+        }
+
+        .modal-tab-content {
+            display: none;
+        }
+
+        .modal-tab-content.active {
+            display: block;
+        }
+
+        /* Wiggly Modal Styles */
+        .wiggly-modal {
+            position: relative;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .wiggly-modal-bg {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .wiggly-modal-content {
+            position: relative;
+            z-index: 1;
+            padding: 24px;
+            color: #000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .wiggly-modal-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        @media (hover: hover) {
+            .wiggly-modal-close:hover {
+                color: #000;
+            }
+        }
+
+        .wiggly-modal-content h2 {
+            margin-bottom: 16px;
+            font-size: 20px;
+            font-family: 'Schoolbell', cursive;
+        }
+
+        .wiggly-modal-content p {
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .wiggly-modal-content h3 {
+            color: #000;
+            font-size: 16px;
+            margin: 20px 0 12px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: 'Schoolbell', cursive;
+        }
+
+        .wiggly-modal-content h3:first-of-type {
+            margin-top: 8px;
+        }
+
+        .wiggly-modal-content ul {
+            color: #333;
+            line-height: 1.8;
+            font-size: 14px;
+            padding-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .wiggly-modal-content li strong {
+            color: #000;
+        }
+
+        .wiggly-modal-tip {
+            background: rgba(0, 0, 0, 0.08);
+            border-left: 3px solid #000;
+            padding: 12px 16px;
+            margin: 16px 0;
+            font-size: 13px;
+            color: #333;
+        }
+
+        .wiggly-modal-tip strong {
+            color: #000;
+        }
+
+        .wiggly-modal-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 16px;
+        }
+
+        .wiggly-modal-tab {
+            flex: 1;
+            padding: 10px 16px;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 14px;
+            font-family: 'Schoolbell', cursive;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: color 0.15s;
+        }
+
+        @media (hover: hover) {
+            .wiggly-modal-tab:hover {
+                color: #333;
+            }
+        }
+
+        .wiggly-modal-tab.active {
+            color: #000;
+            border-bottom-color: #000;
+        }
+
+        .wiggly-modal-tab-content {
+            display: none;
+        }
+
+        .wiggly-modal-tab-content.active {
+            display: block;
+        }
+
+        .wiggly-level-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .wiggly-level-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .wiggly-level-info-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .wiggly-level-info-value {
+            color: #000;
+            font-size: 14px;
+        }
+
+        .level-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .level-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .level-info-label {
+            color: #888;
+            font-size: 14px;
+        }
+
+        .level-info-value {
+            color: #fff;
+            font-size: 14px;
+        }
+
+        /* Hamburger menu */
+        .menu-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 100;
+        }
+
+        .menu-overlay.visible {
+            display: block;
+        }
+
+        .menu {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 260px;
+            height: 100%;
+            background: #1a1a1a;
+            padding: 20px;
+            border-left: 1px solid #333;
+        }
+
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .menu-item {
+            display: block;
+            padding: 14px 0;
+            border-bottom: 1px solid #333;
+            color: #fff;
+            text-decoration: none;
+            font-size: 16px;
+        }
+
+        @media (hover: hover) {
+            .menu-item:hover {
+                color: #f1c40f;
+            }
+        }
+
+        /* Stats in modal */
+        .leaderboard {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .leaderboard th,
+        .leaderboard td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        .leaderboard th {
+            color: #888;
+        }
+
+        .histogram {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 60px;
+            margin: 16px 0;
+        }
+
+        .histogram-bar {
+            flex: 1;
+            background: #3498db;
+            min-width: 8px;
+        }
+
+        .histogram-bar.highlight {
+            background: #f1c40f;
+        }
+
+        .result-score {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .result-score .big {
+            font-size: 48px;
+            font-weight: bold;
+            color: #f1c40f;
+        }
+
+        .result-score .label {
+            color: #888;
+            font-size: 12px;
+        }
+
+        /* How to Play guide section */
+        .guide-section-wrapper {
+            position: relative;
+            z-index: 5;
+            padding: 32px 16px 48px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .guide-card {
+            background: #fff;
+            max-width: var(--game-width, 640px);
+            width: 100%;
+            padding: 24px 24px;
+            font-family: 'Schoolbell', cursive;
+            color: #000;
+            box-sizing: border-box;
+        }
+
+        .guide-card h1 {
+            font-size: 24px;
+            margin: 0 0 12px;
+            font-family: 'Schoolbell', cursive;
+            color: #000;
+            font-weight: normal;
+        }
+
+        .guide-section {
+            margin-bottom: 0;
+        }
+
+        .guide-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .guide-section h2 {
+            font-size: 22px;
+            margin: 0 0 10px 0;
+            font-family: 'Schoolbell', cursive;
+            color: #000;
+            font-weight: normal;
+        }
+
+        .guide-section p {
+            font-size: 17px;
+            line-height: 1.7;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .guide-section ul {
+            margin: 0 0 10px 0;
+            padding-left: 20px;
+            color: #333;
+            font-size: 17px;
+            line-height: 1.8;
+        }
+
+        .guide-section li {
+            margin-bottom: 2px;
+        }
+
+        .guide-divider {
+            border: none;
+            border-top: 2px dashed #e8e8e8;
+            margin: 16px 0;
+        }
+
+        .guide-hero {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+        }
+
+        .guide-hero-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .guide-hero-img {
+            flex-shrink: 0;
+            width: 300px;
+            border-radius: 4px;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        @media (max-width: 520px) {
+            .guide-hero {
+                flex-direction: column;
+            }
+
+            .guide-hero-img {
+                width: 100%;
+                max-width: 300px;
+                align-self: center;
+            }
+        }
+
+        .guide-tip {
+            background: #fef9e7;
+            border-left: 4px solid #f1c40f;
+            padding: 12px 16px;
+            margin-top: 12px;
+            font-size: 16px;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        .guide-tip strong {
+            color: #333;
+        }
+
+        .bonus-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+        }
+
+        .bonus-icon {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            vertical-align: middle;
+        }
+
+        .bonus-text {
+            font-size: 17px;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .bonus-points {
+            padding: 1px 6px;
+        }
+
+        .bonus-points.positive {
+            background: #e8f5e9;
+            color: #27ae60;
+        }
+
+        .bonus-points.negative {
+            background: #ffebee;
+            color: #c0392b;
+        }
+
+        /* Interactive mini example */
+        .mini-puzzle-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 16px 0;
+        }
+
+        .mini-viewport {
+            width: 400px;
+            height: 360px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 440px) {
+            .mini-viewport {
+                width: 320px;
+                height: 288px;
+            }
+        }
+
+        .mini-viewport canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .mini-puzzle-label {
+            font-family: 'Schoolbell', cursive;
+            font-size: 16px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+    <!-- Google tag (gtag.js) -->
+    <script async="" src="./enclose.horse_files/js" crossorigin="anonymous"></script>
+
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-WZ3X0HP080');
+    </script>
+
+    <script>
+        window.__LEVEL__ = {}; window.__DAILY_LEVELS__ = []; const urlParams = new URLSearchParams(window.location.search); if (urlParams.has("customLevel")) { var rule = "#submitBtnContainer, #checkSubmitBtnContainer, #puzzleNavRow, .puzzle-nav-row, #reportSubmitBtnContainer { display: none !important; }"; var style = document.createElement("style"); style.type = "text/css"; style.appendChild(document.createTextNode(rule)); document.head.appendChild(style); try { const customLevelStr = decodeURIComponent(urlParams.get("customLevel")); const custom = JSON.parse(customLevelStr); Object.assign(window.__LEVEL__, custom); window.__LEVEL__.id = "comp-" + urlParams.get("lvIndex"); window.__LEVEL__.isDaily = false; window._CUSTOM = custom; } catch (e) { console.error(e); } } setInterval(() => { if (window._CUSTOM) { const dn = document.getElementById("dayNumber"); if (dn) dn.innerText = window._CUSTOM.name; } const scoreEl = document.getElementById("areaValuePlay"); if (scoreEl && !scoreEl.classList.contains("escaped") && scoreEl.innerText !== "N/A") { const score = parseInt(scoreEl.innerText, 10); if (!isNaN(score)) { const lvIndex = parseInt(urlParams.get("lvIndex"), 10); window.parent.postMessage({ type: "GAME_OVER", lvIndex: lvIndex, score: score }, "*"); } } }, 500);   
+    </script>
+</head>
+
+<body class="js-ready">
+    <!-- Game viewport - exactly one screen -->
+    <div class="game-viewport">
+        <!-- Full-screen grass background -->
+        <canvas id="grassBg" width="1438" height="630"></canvas>
+
+        <!-- Navbar (rendered by JS) -->
+        <div id="navbarContainer">
+            <style>
+                #dayNumber {
+                    position: relative;
+                    cursor: default;
+                    transition: color 0.15s;
+                }
+
+                #dayNumber.clickable {
+                    cursor: pointer;
+                }
+
+                #dayNumber.clickable:hover {
+                    color: #f1c40f;
+                }
+
+                #dayNumber[data-tooltip]::after {
+                    content: attr(data-tooltip);
+                    position: absolute;
+                    top: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #333;
+                    color: #fff;
+                    padding: 0 12px;
+                    border-radius: 0;
+                    font-size: 13px;
+                    white-space: nowrap;
+                    opacity: 0;
+                    pointer-events: none;
+                    transition: opacity 0.15s;
+                    z-index: 100;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                }
+
+                #dayNumber[data-tooltip]:hover::after {
+                    opacity: 1;
+                }
+
+                .navbar-admin-links {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    flex: 1;
+                }
+
+                .navbar-admin-link {
+                    font-family: 'Schoolbell', cursive;
+                    font-size: 16px;
+                    color: #fff;
+                    text-decoration: none;
+                    transition: color 0.15s;
+                }
+
+                .navbar-admin-link:hover {
+                    color: #f1c40f;
+                }
+
+                .navbar-admin-link.active {
+                    color: #f1c40f;
+                }
+
+                .navbar-admin-sep {
+                    font-family: 'Schoolbell', cursive;
+                    font-size: 16px;
+                    color: rgba(255, 255, 255, 0.5);
+                }
+
+                .navbar-menu-wrapper {
+                    position: relative;
+                    display: inline-flex;
+                }
+
+                .navbar-badge-canvas {
+                    position: absolute;
+                    top: -8px;
+                    right: -12px;
+                    pointer-events: none;
+                    z-index: 1;
+                }
+            </style>
+            <nav class="navbar">
+                <div class="navbar-row">
+                    <!-- <div style="display: flex; gap: 4px; flex: 1;"><button class="navbar-btn" id="btnHelp"
+                            style="transform: translate(-0.938533px, 0.419099px) rotate(1.058deg);">?</button></div> -->
+                    <a class="navbar-title" id="siteTitle"><span
+                            style="transform: translate(-0.327033px, 0.314801px) rotate(0.836027deg);">e</span><span
+                            style="transform: translate(0.287881px, 0.718246px) rotate(0.789641deg);">n</span><span
+                            style="transform: translate(-0.250421px, 0.332893px) rotate(-0.0310879deg);">c</span><span
+                            style="transform: translate(0.291781px, -0.730301px) rotate(-0.614808deg);">l</span><span
+                            style="transform: translate(0.586959px, 0.172538px) rotate(0.156198deg);">o</span><span
+                            style="transform: translate(0.436259px, 0.400006px) rotate(0.827444deg);">s</span><span
+                            style="transform: translate(-0.482578px, 0.342968px) rotate(1.36124deg);">e</span><span
+                            style="transform: translate(-0.57397px, -0.396445px) rotate(-0.791503deg);">.</span><span
+                            style="transform: translate(0.194195px, -0.0468949px) rotate(-0.242058deg);">h</span><span
+                            style="transform: translate(-0.587683px, -0.349928px) rotate(1.1126deg);">o</span><span
+                            style="transform: translate(0.509099px, 0.3843px) rotate(0.003758deg);">r</span><span
+                            style="transform: translate(0.71241px, 0.421372px) rotate(1.34091deg);">s</span><span
+                            style="transform: translate(0.23964px, 0.482777px) rotate(0.231909deg);">e</span></a>
+                    <div style="display: flex; gap: 4px; flex: 1; justify-content: flex-end;">
+                        <div class="navbar-menu-wrapper">
+                            <!-- <button class="navbar-btn hamburger" id="btnMenu"><span
+                                    style="transform: translate(-0.100002px, -0.0687585px) rotate(0.26261deg);">--</span><span
+                                    style="transform: translate(0.68223px, 0.227514px) rotate(-0.591604deg);">--</span><span
+                                    style="transform: translate(0.163465px, 0.423632px) rotate(0.854509deg);">--</span></button> -->
+
+                        </div>
+                    </div>
+                </div>
+                <div class="navbar-row navbar-row-subtitle">
+                    <div class="navbar-subtitle clickable" id="dayNumber"
+                        style="transform: translate(0.252455px, -0.477715px) rotate(0.931534deg);"></div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Top container - prev/next navigation (populated by JS) -->
+        <div class="top-container" id="topContainer">
+            <div class="puzzle-nav-row" id="puzzleNavRow" style="width: 358px;"><a class="puzzle-nav"
+                    href="https://enclose.horse/play/2026-03-03"><span
+                        style="transform: translate(0.520932px, 0.27041px) rotate(0.910151deg);">&lt;</span> <span
+                        style="transform: translate(-0.513333px, -0.0992612px) rotate(1.20016deg);">P</span><span
+                        style="transform: translate(0.347355px, -0.282846px) rotate(1.33212deg);">r</span><span
+                        style="transform: translate(-0.423967px, -0.437655px) rotate(1.31874deg);">e</span><span
+                        style="transform: translate(0.40523px, -0.283155px) rotate(-0.0374036deg);">v</span></a><a
+                    class="puzzle-nav" href="https://enclose.horse/play/2026-03-05"><span
+                        style="transform: translate(0.729779px, 0.127485px) rotate(-0.773147deg);">N</span><span
+                        style="transform: translate(0.0654098px, -0.458411px) rotate(-0.986685deg);">e</span><span
+                        style="transform: translate(0.482032px, -0.14807px) rotate(0.702204deg);">x</span><span
+                        style="transform: translate(-0.649844px, 0.378396px) rotate(1.04876deg);">t</span> <span
+                        style="transform: translate(-0.222045px, 0.058603px) rotate(-0.721354deg);">&gt;</span></a>
+            </div>
+        </div>
+
+        <!-- Grid area - JUST the canvas -->
+        <main class="grid-area" id="viewport">
+            <canvas id="game" width="358" height="413" style="width: 358.467px; height: 413px;"></canvas>
+        </main>
+
+        <!-- Bottom container - stats + buttons -->
+        <footer class="bottom-container" id="bottomContainer">
+            <div class="stats-row" id="gridStats" style="width: 358px;">
+                <div class="stat" id="wallsStat"
+                    style="transform: translate(0.520932px, 0.27041px) rotate(0.606767deg);">
+                    <span class="stat-label">Walls:</span>
+                    <span><span class="stat-value" id="wallsUsed">9</span>/<span class="stat-value"
+                            id="wallsBudget">9</span></span>
+                </div>
+                <div class="stat" id="areaStatPlay"
+                    style="transform: translate(-0.656483px, 0.439581px) rotate(0.540306deg);">
+                    <span class="stat-label">Score:</span>
+                    <span class="stat-value gold escaped" id="areaValuePlay">N/A</span>
+                </div>
+            </div>
+            <div class="stats-row stats-row-best" id="gridStatsBest" style="width: 358px;">
+                <div></div>
+                <div class="best-area" id="bestArea" data-mode="best"><svg class="restore-icon"
+                        xmlns="http://www.w3.org/2000/svg" height="14" viewBox="0 -960 960 960" width="14"
+                        fill="currentColor">
+                        <path d="M360-240 120-480l240-240 56 56-144 144h488v-160h80v240H272l144 144-56 56Z"></path>
+                    </svg><span>Best: </span><span id="bestAreaValue">0</span></div>
+            </div>
+            <div class="buttons-row" id="playButtons">
+                <canvas width="120" height="44" style="cursor: pointer; width: 120px; height: 44px;"></canvas><canvas
+                    width="120" height="44" style="cursor: not-allowed; width: 120px; height: 44px;"></canvas>
+            </div>
+        </footer>
+
+        <!-- Modals container (help, menu, settings, results rendered by JS) -->
+        <div id="modalsContainer">
+            <div class="modal-overlay" id="helpOverlay" style="">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <canvas id="helpClose"
+                        style="align-self: flex-end; cursor: pointer; margin-bottom: -6px; width: 40px; height: 40px;"
+                        width="40" height="40"></canvas>
+                    <div class="wiggly-modal"
+                        style="position: relative; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 100px); display: flex; flex-direction: column;">
+                        <canvas class="wiggly-modal-bg"
+                            style="display: block; position: absolute; top: 0px; left: 0px; z-index: 0; width: 400px; height: 432px;"
+                            width="400" height="432"></canvas>
+                        <div class="wiggly-modal-scroll"
+                            style="overflow-y: auto; margin: 12px; margin-right: 14px; flex: 1; min-height: 0; position: relative; z-index: 2;">
+                            <div class="wiggly-modal-content"
+                                style="position: relative; z-index: 1; padding: 20px; color: rgb(0, 0, 0); font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, sans-serif; min-height: 408px;">
+
+
+                                <div class="wiggly-modal-tab-content" id="tab-levelInfo" style="display: block;">
+
+
+                                    <div id="reportSection"
+                                        style="margin-top: 0; padding-top: 20px; border-top: 1px solid #ddd;">
+                                        <div id="reportToggleBtnContainer"
+                                            style="display: flex; justify-content: center; margin-top: 8px;"><canvas
+                                                width="140" height="40"
+                                                style="cursor: pointer; width: 140px; height: 40px;"></canvas></div>
+                                        <div id="reportForm" style="display: none; margin-top: 12px;">
+                                            <p
+                                                style="margin: 0 0 10px 0; font-family: &#39;Schoolbell&#39;, cursive; font-size: 15px; color: #333;">
+                                                Why are you reporting this level?</p>
+                                            <div
+                                                style="display: flex; flex-direction: column; gap: 8px; font-family: &#39;Schoolbell&#39;, cursive; font-size: 15px;">
+                                                <label
+                                                    style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                                    <input type="radio" name="reportReason" value="inappropriate"
+                                                        style="width: 16px; height: 16px; cursor: pointer; accent-color: #f1c40f;">
+                                                    <span>Inappropriate</span>
+                                                </label>
+                                                <label
+                                                    style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                                    <input type="radio" name="reportReason" value="impossible"
+                                                        style="width: 16px; height: 16px; cursor: pointer; accent-color: #f1c40f;">
+                                                    <span>Impossible</span>
+                                                </label>
+                                                <label
+                                                    style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                                    <input type="radio" name="reportReason" value="other"
+                                                        style="width: 16px; height: 16px; cursor: pointer; accent-color: #f1c40f;">
+                                                    <span>Other:</span>
+                                                    <input type="text" id="reportOtherText" maxlength="200"
+                                                        placeholder="Please specify..."
+                                                        style="flex: 1; padding: 2px 8px; font-family: &#39;Schoolbell&#39;, cursive; font-size: 15px; border: none; border-radius: 0; background: #e8e8e8; outline: none; box-sizing: border-box; height: 22px;">
+                                                </label>
+                                            </div>
+                                            <div id="reportError"
+                                                style="display: none; color: #c0392b; font-family: &#39;Schoolbell&#39;, cursive; font-size: 14px; margin-top: 8px;">
+                                                Please select a reason
+                                            </div>
+                                            <div
+                                                style="display: flex; gap: 8px; margin-top: 20px; justify-content: center;">
+                                                <div id="reportSubmitBtnContainer"><canvas width="90" height="36"
+                                                        style="cursor: pointer; width: 90px; height: 36px;"></canvas>
+                                                </div>
+                                                <div id="reportCancelBtnContainer"><canvas width="90" height="36"
+                                                        style="cursor: pointer; width: 90px; height: 36px;"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div id="reportSubmitted"
+                                            style="display: none; color: #27ae60; font-family: &#39;Schoolbell&#39;, cursive; font-size: 14px; text-align: center; margin-top: 16px;">
+                                            Report submitted. Thank you!
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-overlay" id="pastPuzzlesOverlay">
+                <style>
+                    .past-puzzle-row:hover {
+                        background: #f1c40f !important;
+                        color: #000 !important;
+                    }
+
+                    .past-puzzle-row:hover .optimal-score {
+                        color: #000 !important;
+                    }
+                </style>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <canvas id="pastPuzzlesClose" style="align-self: flex-end; cursor: pointer; margin-bottom: -6px;"
+                        width="40" height="40"></canvas>
+                    <div class="wiggly-modal"
+                        style="position: relative; width: 340px; max-width: calc(100vw - 40px); max-height: calc(100dvh - 100px); display: flex; flex-direction: column;">
+                        <canvas class="wiggly-modal-bg"
+                            style="display: block; position: absolute; top: 0; left: 0; z-index: 0;"></canvas>
+                        <div class="wiggly-modal-scroll"
+                            style="overflow-y: auto; margin: 12px; margin-right: 14px; flex: 1; min-height: 0; position: relative; z-index: 2;">
+                            <div class="wiggly-modal-content" id="pastPuzzlesContent"
+                                style="position: relative; z-index: 1; padding: 20px; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+                                <h2 style="font-size: 24px; margin-bottom: 16px;">Past Puzzles</h2>
+                                <div id="pastPuzzlesList" style="font-size: 16px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="menu-overlay" id="menuOverlay"
+                style="display: none; position: fixed; inset: 0px; background: rgba(0, 0, 0, 0.6); z-index: 100;">
+                <div class="floating-menu"
+                    style="position: absolute; top: 56px; right: 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                    <canvas width="140" height="44"
+                        style="cursor: pointer; width: 140px; height: 44px;"></canvas><canvas width="140" height="44"
+                        style="cursor: pointer; width: 140px; height: 44px;"></canvas><canvas width="140" height="44"
+                        style="cursor: pointer; width: 140px; height: 44px;"></canvas><canvas width="140" height="44"
+                        style="cursor: pointer; width: 140px; height: 44px;"></canvas><canvas width="140" height="44"
+                        style="cursor: pointer; width: 140px; height: 44px;"></canvas><canvas width="140" height="44"
+                        style="cursor: pointer; width: 140px; height: 44px;"></canvas><canvas width="140" height="44"
+                        style="cursor: pointer; width: 140px; height: 44px;"></canvas>
+                </div>
+            </div>
+            <div class="modal-overlay" id="settingsOverlay" style="">
+                <style>
+                    #chkAnimations,
+                    #chkDarkGridlines,
+                    #chkPortalLabels,
+                    #chkHideHorseThoughts,
+                    #chkOptimalOverlay {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        width: 18px;
+                        height: 18px;
+                        border: 2px solid #999;
+                        background: #fff;
+                        cursor: pointer;
+                        position: relative;
+                    }
+
+                    #chkAnimations:checked,
+                    #chkDarkGridlines:checked,
+                    #chkPortalLabels:checked,
+                    #chkHideHorseThoughts:checked,
+                    #chkOptimalOverlay:checked {
+                        background: #d4a017;
+                        border-color: #d4a017;
+                    }
+
+                    #chkAnimations:checked::after,
+                    #chkDarkGridlines:checked::after,
+                    #chkPortalLabels:checked::after,
+                    #chkHideHorseThoughts:checked::after,
+                    #chkOptimalOverlay:checked::after {
+                        content: '';
+                        position: absolute;
+                        left: 50%;
+                        top: 50%;
+                        width: 5px;
+                        height: 10px;
+                        border: solid #fff;
+                        border-width: 0 2px 2px 0;
+                        transform: translate(-50%, -60%) rotate(45deg);
+                    }
+
+                    .settings-select-wrapper {
+                        position: relative;
+                        display: block;
+                    }
+
+                    .settings-select-wrapper::after {
+                        content: '鈥?;
+ font-family: 'Schoolbell', cursive;
+                        font-size: 18px;
+                        color: #000;
+                        position: absolute;
+                        right: 12px;
+                        top: 50%;
+                        transform: translateY(-50%) rotate(-90deg);
+                        pointer-events: none;
+                    }
+
+                    #themeSelect,
+                    #wallStyleSelect {
+                        width: 100%;
+                        padding: 10px 32px 10px 12px;
+                        font-size: 16px;
+                        font-family: 'Schoolbell', cursive;
+                        border: none;
+                        border-radius: 0;
+                        box-sizing: border-box;
+                        background: #e8e8e8;
+                        color: #000;
+                        outline: none;
+                        cursor: pointer;
+                        -webkit-appearance: none;
+                        appearance: none;
+                    }
+
+                    #gridOpacitySlider {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        background: #999;
+                        height: 1px;
+                        border-radius: 0;
+                    }
+
+                    #gridOpacitySlider::-webkit-slider-thumb {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        width: 18px;
+                        height: 18px;
+                        background: #444;
+                        border-radius: 0;
+                        cursor: pointer;
+                        border: none;
+                        box-shadow: none;
+                    }
+
+                    #gridOpacitySlider::-moz-range-thumb {
+                        width: 18px;
+                        height: 18px;
+                        background: #444;
+                        border-radius: 0;
+                        cursor: pointer;
+                        border: none;
+                        box-shadow: none;
+                    }
+
+                    #modalTransparencySlider {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        background: #999;
+                        height: 1px;
+                        border-radius: 0;
+                    }
+
+                    #modalTransparencySlider::-webkit-slider-thumb {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        width: 18px;
+                        height: 18px;
+                        background: #444;
+                        border-radius: 0;
+                        cursor: pointer;
+                        border: none;
+                        box-shadow: none;
+                    }
+
+                    #modalTransparencySlider::-moz-range-thumb {
+                        width: 18px;
+                        height: 18px;
+                        background: #444;
+                        border-radius: 0;
+                        cursor: pointer;
+                        border: none;
+                        box-shadow: none;
+                    }
+                </style>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <canvas id="settingsClose"
+                        style="align-self: flex-end; cursor: pointer; margin-bottom: -6px; width: 40px; height: 40px;"
+                        width="40" height="40"></canvas>
+                    <div class="wiggly-modal"
+                        style="position: relative; width: 340px; max-height: calc(100vh - 100px); display: flex; flex-direction: column;">
+                        <canvas class="wiggly-modal-bg"
+                            style="display: block; position: absolute; top: 0px; left: 0px; z-index: 0; width: 340px; height: 528px;"
+                            width="340" height="528"></canvas>
+                        <div class="wiggly-modal-scroll"
+                            style="overflow-y: auto; margin: 12px; margin-right: 14px; flex: 1; min-height: 0; position: relative; z-index: 2;">
+                            <div class="wiggly-modal-content"
+                                style="position: relative; z-index: 1; padding: 20px; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+                                <h2
+                                    style="font-size: 24px; margin-bottom: 20px; font-family: &#39;Schoolbell&#39;, cursive; color: #000;">
+                                    Settings</h2>
+                                <div class="settings-modal-tabs" style="display: flex; margin-bottom: 16px;">
+                                    <div class="settings-tab-wrapper" style="flex: 1; position: relative;">
+                                        <canvas class="settings-tab-bg" data-tab="general"
+                                            style="position: absolute; top: 0px; left: 0px; width: 137px; height: 42px; pointer-events: none;"
+                                            width="137" height="42"></canvas>
+                                        <button class="settings-modal-tab" data-tab="general"
+                                            style="position: relative; z-index: 1; width: 100%; padding: 10px 16px; background: none; border: none; color: #000; font-size: 16px; font-family: &#39;Schoolbell&#39;, cursive; cursor: pointer;">General</button>
+                                    </div>
+                                    <div class="settings-tab-wrapper" style="flex: 1; position: relative;">
+                                        <canvas class="settings-tab-bg" data-tab="advanced"
+                                            style="position: absolute; top: 0px; left: 0px; width: 137px; height: 42px; pointer-events: none;"
+                                            width="137" height="42"></canvas>
+                                        <button class="settings-modal-tab" data-tab="advanced"
+                                            style="position: relative; z-index: 1; width: 100%; padding: 10px 16px; background: none; border: none; color: #000; font-size: 16px; font-family: &#39;Schoolbell&#39;, cursive; cursor: pointer;">Advanced</button>
+                                    </div>
+                                </div>
+
+                                <div class="settings-tab-content" id="settings-tab-general" style="display: block;">
+                                    <div style="margin-bottom: 20px;">
+                                        <label
+                                            style="display: block; font-size: 16px; color: #333; margin-bottom: 8px;">Your
+                                            Name</label>
+                                        <input type="text" id="settingsName" value="" placeholder="Anonymous"
+                                            style="width: 100%; padding: 10px 12px; font-size: 16px; font-family: &#39;Schoolbell&#39;, cursive; border: none; border-radius: 0; box-sizing: border-box; background: #e8e8e8; outline: none;">
+                                        <div
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                                            <span style="font-size: 13px; color: #666;">Shown on leaderboards</span>
+                                            <span id="nameSavedIndicator"
+                                                style="font-size: 13px; color: #27ae60; opacity: 0; transition: opacity 0.2s;">Saved
+                                                鉁?/span>
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-top: 16px;">
+                                        <label
+                                            style="display: block; font-size: 16px; color: #333; margin-bottom: 8px;">Theme</label>
+                                        <span class="settings-select-wrapper">
+                                            <select id="themeSelect">
+                                                <option value="default" selected="">Default</option>
+                                                <option value="classic">Classic</option>
+                                                <option value="girl">Girl???</option>
+                                                <option value="hot">Hot</option>
+                                            </select>
+                                        </span>
+                                    </div>
+
+                                    <div style="margin-top: 16px;">
+                                        <label
+                                            style="display: block; font-size: 16px; color: #333; margin-bottom: 8px;">Wall
+                                            Style</label>
+                                        <span class="settings-select-wrapper">
+                                            <select id="wallStyleSelect">
+                                                <option value="default" selected="">Default (Cube)</option>
+                                                <option value="compact">Simple (Log)</option>
+                                                <option value="square">Simplest (Square)</option>
+                                            </select>
+                                        </span>
+                                    </div>
+
+                                    <label
+                                        style="display: flex; align-items: center; gap: 12px; font-size: 16px; color: #333; cursor: pointer; padding: 8px 0; margin-top: 16px;"
+                                        title="Toggle idle animations">
+                                        <input type="checkbox" id="chkAnimations" checked=""
+                                            style="width: 18px; height: 18px; cursor: pointer;">
+                                        <span>Personality</span>
+                                    </label>
+                                </div>
+
+                                <div class="settings-tab-content" id="settings-tab-advanced" style="display: none;">
+                                    <label
+                                        style="display: flex; align-items: center; gap: 12px; font-size: 16px; color: #333; cursor: pointer; padding: 8px 0;">
+                                        <input type="checkbox" id="chkDarkGridlines"
+                                            style="width: 18px; height: 18px; cursor: pointer;">
+                                        <span>Dark grid lines</span>
+                                    </label>
+
+                                    <label
+                                        style="display: flex; align-items: center; gap: 12px; font-size: 16px; color: #333; cursor: pointer; padding: 8px 0; margin-top: 8px;">
+                                        <input type="checkbox" id="chkPortalLabels"
+                                            style="width: 18px; height: 18px; cursor: pointer;">
+                                        <span>Portal labels</span>
+                                    </label>
+
+                                    <label
+                                        style="display: flex; align-items: center; gap: 12px; font-size: 16px; color: #333; cursor: pointer; padding: 8px 0; margin-top: 8px;">
+                                        <input type="checkbox" id="chkHideHorseThoughts"
+                                            style="width: 18px; height: 18px; cursor: pointer;">
+                                        <span>Hide horse thoughts</span>
+                                    </label>
+
+                                    <label
+                                        style="display: flex; align-items: center; gap: 12px; font-size: 16px; color: #333; cursor: pointer; padding: 8px 0; margin-top: 8px;"
+                                        title="When viewing the optimal solution after submitting a daily, show it as a transparent overlay on top of your solution instead of replacing your walls.">
+                                        <input type="checkbox" id="chkOptimalOverlay"
+                                            style="width: 18px; height: 18px; cursor: pointer;">
+                                        <span>Optimal as overlay</span>
+                                    </label>
+
+                                    <div style="margin-top: 16px;">
+                                        <label
+                                            style="display: block; font-size: 16px; color: #333; margin-bottom: 8px;">Grid
+                                            Lines</label>
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <input type="range" id="gridOpacitySlider" min="0" max="100" value="15"
+                                                style="flex: 1; cursor: pointer;">
+                                            <span id="gridOpacityValue"
+                                                style="font-size: 14px; color: #666; min-width: 36px; text-align: right;">15%</span>
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-top: 16px;">
+                                        <label
+                                            style="display: block; font-size: 16px; color: #333; margin-bottom: 8px;">Modal
+                                            Transparency</label>
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <input type="range" id="modalTransparencySlider" min="0" max="100" value="0"
+                                                style="flex: 1; cursor: pointer;">
+                                            <span id="modalTransparencyValue"
+                                                style="font-size: 14px; color: #666; min-width: 36px; text-align: right;">0%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div
+                    style="position: fixed; width: 28px; height: 28px; background: rgb(255, 224, 102); border-radius: 50% 50% 45% 45%; box-shadow: rgba(255, 224, 102, 0.8) 0px 0px 12px 6px, rgba(255, 200, 50, 0.4) 0px 0px 24px 12px; display: none; z-index: 10000; transform: translate(-50%, -50%); cursor: grab;">
+                </div>
+            </div>
+            <div class="modal-overlay" id="aboutOverlay" style="">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <canvas id="aboutClose"
+                        style="align-self: flex-end; cursor: pointer; margin-bottom: -6px; width: 40px; height: 40px;"
+                        width="40" height="40"></canvas>
+                    <div class="wiggly-modal"
+                        style="position: relative; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 100px); display: flex; flex-direction: column;">
+                        <canvas class="wiggly-modal-bg"
+                            style="display: block; position: absolute; top: 0px; left: 0px; z-index: 0; width: 400px; height: 459px;"
+                            width="400" height="459"></canvas>
+                        <div class="wiggly-modal-scroll"
+                            style="overflow-y: auto; margin: 12px; margin-right: 14px; flex: 1; min-height: 0; position: relative; z-index: 2;">
+                            <div class="wiggly-modal-content"
+                                style="position: relative; z-index: 1; padding: 20px; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+                                <div class="about-modal-tabs" style="display: flex; margin-bottom: 16px;">
+                                    <div class="about-tab-wrapper" style="flex: 1; position: relative;">
+                                        <canvas class="about-tab-bg" data-tab="about"
+                                            style="position: absolute; top: 0px; left: 0px; width: 167px; height: 42px; pointer-events: none;"
+                                            width="167" height="42"></canvas>
+                                        <button class="about-modal-tab" data-tab="about"
+                                            style="position: relative; z-index: 1; width: 100%; padding: 10px 16px; background: none; border: none; color: #000; font-size: 16px; font-family: &#39;Schoolbell&#39;, cursive; cursor: pointer;">About</button>
+                                    </div>
+                                    <div class="about-tab-wrapper" style="flex: 1; position: relative;">
+                                        <canvas class="about-tab-bg" data-tab="updates"
+                                            style="position: absolute; top: 0px; left: 0px; width: 167px; height: 42px; pointer-events: none;"
+                                            width="167" height="42"></canvas>
+                                        <button class="about-modal-tab" data-tab="updates"
+                                            style="position: relative; z-index: 1; width: 100%; padding: 10px 16px; background: none; border: none; color: #000; font-size: 16px; font-family: &#39;Schoolbell&#39;, cursive; cursor: pointer;">Updates</button>
+                                    </div>
+                                </div>
+
+                                <div class="about-tab-content" id="about-tab-about" style="display: block;">
+                                    <p style="font-size: 18px; line-height: 1.5; margin-bottom: 16px;">
+                                        Enclose.horse is a simple puzzle game about enclosing the maximum area with a
+                                        limited number of walls.
+                                    </p>
+
+                                    <p style="font-size: 18px; line-height: 1.5; margin-bottom: 16px;">
+                                        I originally conceived this as an interesting Leetcode/Advent of Code
+                                        optimization problem. But then, after playing around with it, it seemed
+                                        interesting enough to develop into fully-fledged game.
+                                    </p>
+
+                                    <p style="font-size: 18px; line-height: 1.5; margin-bottom: 16px;">
+                                        Have fun!
+                                    </p>
+
+                                    <p style="font-size: 16px; color: #666; margin-top: 24px;">
+                                        Made with <span id="aboutEmoji">馃敟</span> by <a
+                                            href="https://x.com/thinkingshivers" target="_blank"
+                                            style="color: #666;">Shivers</a>
+                                    </p>
+                                </div>
+
+                                <div class="about-tab-content" id="about-tab-updates" style="display: none;">
+                                    <div style="font-size: 16px; line-height: 1.6;">
+                                        <div style="margin-bottom: 20px;">
+                                            <div style="font-weight: bold; color: #000; margin-bottom: 6px;">Jan 18,
+                                                2026</div>
+                                            <ul style="margin: 0; padding-left: 20px; color: #444;">
+                                                <li>Added apples and bees</li>
+                                                <li>Solver now cycles through solutions if there's multiple</li>
+                                                <li>Bug fixes: histogram bucketing and horse thoughts</li>
+                                            </ul>
+                                        </div>
+
+                                        <div style="margin-bottom: 20px;">
+                                            <div style="font-weight: bold; color: #000; margin-bottom: 6px;">Jan 8, 2026
+                                            </div>
+                                            <ul style="margin: 0; padding-left: 20px; color: #444;">
+                                                <li>Added new wall styles</li>
+                                            </ul>
+                                        </div>
+
+                                        <div style="margin-bottom: 20px;">
+                                            <div style="font-weight: bold; color: #000; margin-bottom: 6px;">Jan 6, 2026
+                                            </div>
+                                            <ul style="margin: 0; padding-left: 20px; color: #444;">
+                                                <li>Added portals</li>
+                                            </ul>
+                                        </div>
+
+                                        <div style="margin-bottom: 20px;">
+                                            <div style="font-weight: bold; color: #000; margin-bottom: 6px;">Jan 4, 2026
+                                            </div>
+                                            <ul style="margin: 0; padding-left: 20px; color: #444;">
+                                                <li>Additional search filters</li>
+                                                <li>Fixed cherry bug.</li>
+                                            </ul>
+                                        </div>
+
+                                        <div style="margin-bottom: 20px;">
+                                            <div style="font-weight: bold; color: #000; margin-bottom: 6px;">Jan 3, 2026
+                                            </div>
+                                            <ul style="margin: 0; padding-left: 20px; color: #444;">
+                                                <li>Added cherries</li>
+                                            </ul>
+                                        </div>
+
+                                        <div style="margin-bottom: 20px;">
+                                            <div style="font-weight: bold; color: #000; margin-bottom: 6px;">Jan 2, 2026
+                                            </div>
+                                            <ul style="margin: 0; padding-left: 20px; color: #444;">
+                                                <li>Tracks your best area while you play</li>
+                                            </ul>
+                                        </div>
+
+                                        <div style="margin-bottom: 20px;">
+                                            <div style="font-weight: bold; color: #000; margin-bottom: 6px;">Jan 1, 2026
+                                            </div>
+                                            <ul style="margin: 0; padding-left: 20px; color: #444;">
+                                                <li>Solver in level editor</li>
+                                                <li>"Browse" page for exploring levels created by other players</li>
+                                                <li>Vote on levels after playing</li>
+                                            </ul>
+                                        </div>
+
+                                        <div style="margin-bottom: 20px;">
+                                            <div style="font-weight: bold; color: #000; margin-bottom: 6px;">Dec 31,
+                                                2025</div>
+                                            <ul style="margin: 0; padding-left: 20px; color: #444;">
+                                                <li>Added updates tab to about modal</li>
+                                            </ul>
+                                        </div>
+
+                                        <div style="margin-bottom: 20px;">
+                                            <div style="font-weight: bold; color: #000; margin-bottom: 6px;">Dec 30,
+                                                2025</div>
+                                            <ul style="margin: 0; padding-left: 20px; color: #444;">
+                                                <li>Daily puzzles launched!</li>
+                                                <li>Added Past Puzzles modal</li>
+                                                <li>Score histogram on results</li>
+                                            </ul>
+                                        </div>
+
+                                        <div style="margin-bottom: 20px;">
+                                            <div style="font-weight: bold; color: #000; margin-bottom: 6px;">Dec 29,
+                                                2025</div>
+                                            <ul style="margin: 0; padding-left: 20px; color: #444;">
+                                                <li>Initial release</li>
+                                                <li>Level editor</li>
+                                                <li>Leaderboards</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-overlay" id="privacyOverlay" style="">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <canvas id="privacyClose"
+                        style="align-self: flex-end; cursor: pointer; margin-bottom: -6px; width: 40px; height: 40px;"
+                        width="40" height="40"></canvas>
+                    <div class="wiggly-modal"
+                        style="position: relative; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 100px); display: flex; flex-direction: column;">
+                        <canvas class="wiggly-modal-bg"
+                            style="display: block; position: absolute; top: 0px; left: 0px; z-index: 0; width: 400px; height: 859px;"
+                            width="400" height="859"></canvas>
+                        <div class="wiggly-modal-scroll"
+                            style="overflow-y: auto; margin: 12px; margin-right: 14px; flex: 1; min-height: 0; position: relative; z-index: 2;">
+                            <div class="wiggly-modal-content"
+                                style="position: relative; z-index: 1; padding: 20px; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+                                <h2
+                                    style="font-size: 24px; margin-bottom: 20px; font-family: &#39;Schoolbell&#39;, cursive; color: #000;">
+                                    Privacy Policy</h2>
+
+                                <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
+                                    Your privacy is important to us. To better protect your information, we provide this
+                                    notice explaining our online information practices and how your data may be
+                                    collected when using enclose.horse on any device.
+                                </p>
+
+                                <h3
+                                    style="font-size: 18px; margin: 20px 0 8px 0; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+                                    Our Commitment</h3>
+                                <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
+                                    We do not require you to create an account or provide any personal information to
+                                    play. No email addresses are collected. When you optionally submit a score to the
+                                    leaderboard, it is sent along with your optional display name, which you can change
+                                    or remove at any time in Settings.
+                                </p>
+
+                                <h3
+                                    style="font-size: 18px; margin: 20px 0 8px 0; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+                                    Information We Collect</h3>
+                                <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
+                                    We use your browser's local storage to save your settings (theme, grid preferences)
+                                    and game progress. This data stays on your device and is never sent to our servers.
+                                    We may collect anonymous usage data such as IP addresses and interaction patterns to
+                                    help us understand how people use the site and make improvements. This data is never
+                                    sold or shared with anyone.
+                                </p>
+
+                                <h3
+                                    style="font-size: 18px; margin: 20px 0 8px 0; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+                                    Log Data</h3>
+                                <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
+                                    We may collect certain log data whenever you access our website. This may include
+                                    your IP address, device information, and the time of your visit. We use these
+                                    statistics to help us provide improvements to the website.
+                                </p>
+
+                                <h3
+                                    style="font-size: 18px; margin: 20px 0 8px 0; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+                                    Cookies</h3>
+                                <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
+                                    Cookies are files with a small amount of data that are commonly used as anonymous
+                                    unique identifiers. This site does not use cookies explicitly. However, the site may
+                                    use third-party code and libraries that use cookies to collect information and
+                                    improve their services. You have the option to either accept or refuse these
+                                    cookies.
+                                </p>
+
+                                <h3
+                                    style="font-size: 18px; margin: 20px 0 8px 0; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+                                    Contact</h3>
+                                <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
+                                    We would love to hear from you! Whether you have a concern or simply want to say
+                                    hello, please <a
+                                        href="https://docs.google.com/forms/d/e/1FAIpQLSexmm3p4gwaOtvXLyW7zrfax2dDwWtBiw9J7zFmYpLPMXRhvw/viewform?usp=dialog"
+                                        target="_blank" style="color: #000; text-decoration: underline;">get in
+                                        touch</a>.
+                                </p>
+
+                                <p style="font-size: 14px; color: #666; margin-top: 24px;">
+                                    Last updated: February 2026
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-overlay" id="resultsOverlay">
+                <style>
+                    .fast-tooltip {
+                        position: relative;
+                        cursor: default;
+                    }
+
+                    .fast-tooltip::after {
+                        content: attr(data-tooltip);
+                        position: absolute;
+                        bottom: 100%;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background: #333;
+                        color: #fff;
+                        padding: 4px 8px;
+                        font-size: 12px;
+                        white-space: nowrap;
+                        opacity: 0;
+                        pointer-events: none;
+                        transition: opacity 0.15s;
+                        z-index: 100;
+                    }
+
+                    .fast-tooltip:hover::after {
+                        opacity: 1;
+                    }
+                </style>
+                <div style="position: relative;">
+                    <canvas id="resultsClose" style="position: absolute; top: -40px; right: 0; cursor: pointer;"
+                        width="40" height="40"></canvas>
+                    <div class="wiggly-modal" id="wigglyModal"
+                        style="position: relative; width: 500px; max-width: calc(100vw - 40px); max-height: calc(100dvh - 100px); display: flex; flex-direction: column; background: #fff;">
+                        <canvas class="wiggly-modal-bg"
+                            style="display: block; position: absolute; top: 0; left: 0; z-index: 0; pointer-events: none;"></canvas>
+                        <div class="wiggly-modal-scroll"
+                            style="overflow-y: auto; flex: 1; min-height: 0; position: relative; z-index: 2;">
+                            <div class="wiggly-modal-content" id="resultsContent"
+                                style="position: relative; z-index: 1; padding: 20px 32px; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-overlay" id="unusedWallsTipOverlay" style="">
+                <div style="position: relative;">
+                    <div class="wiggly-modal" id="unusedWallsTipModal"
+                        style="position: relative; width: 380px; max-width: calc(100vw - 32px); max-height: calc(100vh - 100px); display: flex; flex-direction: column;">
+                        <canvas class="wiggly-modal-bg"
+                            style="display: block; position: absolute; top: 0px; left: 0px; z-index: 0; pointer-events: none; width: 380px; height: 299px;"
+                            width="380" height="299"></canvas>
+                        <div class="wiggly-modal-scroll"
+                            style="overflow-y: auto; flex: 1; min-height: 0; position: relative; z-index: 2;">
+                            <div class="wiggly-modal-content"
+                                style="position: relative; z-index: 1; padding: 20px 32px; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+
+                                <h2 style="font-size: 26px; margin: 0 0 16px 0; text-align: center;">Horse Tip!</h2>
+
+                                <p id="unusedWallsMessage"
+                                    style="color: #333; line-height: 1.7; margin-bottom: 20px; font-size: 17px; text-align: center;">
+                                    You have unused walls remaining.
+                                </p>
+
+                                <p
+                                    style="color: #333; line-height: 1.7; margin-bottom: 20px; font-size: 17px; text-align: center;">
+                                    Are you sure you want to submit?
+                                </p>
+
+                                <label
+                                    style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 24px; cursor: pointer; font-size: 15px; color: #555;">
+                                    <input type="checkbox" id="neverShowUnusedTip"
+                                        style="width: 18px; height: 18px; cursor: pointer;">
+                                    <span>Never show me this horse tip again</span>
+                                </label>
+
+                                <div style="display: flex; justify-content: center; gap: 12px;">
+                                    <div id="cancelBtnContainer"><canvas width="120" height="48"
+                                            style="cursor: pointer; width: 120px; height: 48px;"></canvas></div>
+                                    <div id="submitBtnContainer"><canvas width="120" height="48"
+                                            style="cursor: pointer; width: 120px; height: 48px;"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-overlay" id="checkSolutionOverlay" style="">
+                <div style="position: relative;">
+                    <div class="wiggly-modal" id="checkSolutionModal"
+                        style="position: relative; width: 380px; max-width: calc(100vw - 32px); max-height: calc(100vh - 100px); display: flex; flex-direction: column;">
+                        <canvas class="wiggly-modal-bg"
+                            style="display: block; position: absolute; top: 0px; left: 0px; z-index: 0; pointer-events: none; width: 380px; height: 119px;"
+                            width="380" height="119"></canvas>
+                        <div class="wiggly-modal-scroll"
+                            style="overflow-y: auto; flex: 1; min-height: 0; position: relative; z-index: 2;">
+                            <div class="wiggly-modal-content"
+                                style="position: relative; z-index: 1; padding: 20px 32px; color: #000; font-family: &#39;Schoolbell&#39;, cursive;">
+
+                                <h2 id="checkSolutionTitle"
+                                    style="font-size: 30px; margin: 0 0 16px 0; text-align: center;"></h2>
+
+                                <p id="checkSolutionMessage"
+                                    style="color: #333; line-height: 1.7; margin-bottom: 24px; font-size: 17px; text-align: center;">
+                                </p>
+
+                                <div style="display: flex; justify-content: center; gap: 12px;">
+                                    <div id="checkKeepPlayingBtnContainer"><canvas width="140" height="48"
+                                            style="cursor: pointer; width: 140px; height: 48px;"></canvas></div>
+                                    <div id="checkSubmitBtnContainer"><canvas width="120" height="48"
+                                            style="cursor: pointer; width: 120px; height: 48px;"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./enclose.horse_files/mini-puzzle.js"></script>
+
+    <script type="module" src="./enclose.horse_files/play.js"></script>
+
+</body>
+
+</html>

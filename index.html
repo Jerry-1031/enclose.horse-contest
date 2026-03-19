@@ -1,0 +1,242 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Enclose Horse</title>
+    <style>
+        body {
+            font-family: "Segoe UI", sans-serif;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            background: #222;
+            color: #fff;
+        }
+
+        #sidebar {
+            width: 300px;
+            padding: 20px;
+            background: #333;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        #game-container {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #fff;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-top: 0;
+            text-align: center;
+        }
+
+        .timer {
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            color: #ffeb3b;
+            margin: 20px 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .level-btn {
+            padding: 10px;
+            margin: 5px 0;
+            background: #4caf50;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .level-btn:hover {
+            background: #45a049;
+        }
+
+        .level-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .level-score {
+            font-size: 14px;
+            margin-left: 10px;
+            color: #ccc;
+        }
+
+        .total-score {
+            margin-top: auto;
+            font-size: 20px;
+            text-align: center;
+            padding: 20px 0;
+            border-top: 1px solid #555;
+        }
+
+        .status-msg {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #ffeb3b;
+        }
+
+        #export-btn {
+            margin-top: 10px;
+            padding: 10px;
+            background: #2196f3;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: none;
+        }
+
+        #export-btn:hover {
+            background: #1976d2;
+        }
+
+        #cover {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            flex-direction: column;
+        }
+
+        #cover h2 {
+            font-size: 36px;
+            color: #fff;
+        }
+
+        #cover button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="sidebar">
+        <h1>比赛平台</h1>
+        <div class="timer" id="timer">20:00</div>
+        <div class="status-msg" id="status-msg">Ready</div>
+        <div id="levels-list"></div>
+        <div class="total-score">Total score:<span id="total-score">0</span></div>
+        <button id="export-btn" onclick="exportScore()">导出成绩</button>
+    </div>
+    <div id="game-container">
+        <div id="cover">
+            <h2>比赛规则：限时20分钟，共10关</h2>
+            <p>请点击左侧关卡开始游戏。</p>
+            <button onclick="startCompetition()">开始比赛</button>
+        </div>
+        <iframe id="game-frame" src="about:blank"></iframe>
+    </div>
+    <script>
+        const TOTAL_TIME = 20 * 60; let timeLeft = TOTAL_TIME; let timerInterval = null; let currentLevel = null; let competitionStarted = false;
+
+        // 此处可自定义10个关卡的地图
+        const LEVELS = [
+            { id: 1, name: "第一关", map: "~~~~~~.~~~~~\n.G..C....S...\n~~~.~~.~~~~.~\n.C~.1~.......\n~.~.~~~.~~.~~\n~S.......G...\n~~~~~~~~~~~~~\n..S~1.H.0~.C.\n~~.~~~~~~~.~~\n.C.........~~\n~~~~.~~~~~~~~\n.~........0..\n~~.~~~~~.~~~~\n.G.....C....~\n~.~~~~~~~~~.~", budget: 9 },
+            { id: 2, name: "第二关", map: "~~~~~~~~~~~~~\n~...........~\n~...........~\n~.....H.....~\n~...........~\n~~~~~~~~~~~~~", budget: 6 },
+            { id: 3, name: "第三关", map: "~~~~~~~~~~~~~\n~...........~\n~...........~\n~.....H.....~\n~...........~\n~~~~~~~~~~~~~", budget: 6 },
+            { id: 4, name: "第四关", map: "~~~~~~~~~~~~~\n~...........~\n~...........~\n~.....H.....~\n~...........~\n~~~~~~~~~~~~~", budget: 6 },
+            { id: 5, name: "第五关", map: "~~~~~~~~~~~~~\n~...........~\n~...........~\n~.....H.....~\n~...........~\n~~~~~~~~~~~~~", budget: 6 },
+            { id: 6, name: "第六关", map: "~~~~~~~~~~~~~\n~...........~\n~...........~\n~.....H.....~\n~...........~\n~~~~~~~~~~~~~", budget: 6 },
+            { id: 7, name: "第七关", map: "~~~~~~~~~~~~~\n~...........~\n~...........~\n~.....H.....~\n~...........~\n~~~~~~~~~~~~~", budget: 6 },
+            { id: 8, name: "第八关", map: "~~~~~~~~~~~~~\n~...........~\n~...........~\n~.....H.....~\n~...........~\n~~~~~~~~~~~~~", budget: 6 },
+            { id: 9, name: "第九关", map: "~~~~~~~~~~~~~\n~...........~\n~...........~\n~.....H.....~\n~...........~\n~~~~~~~~~~~~~", budget: 6 },
+            { id: 10, name: "第十关", map: "~~~~~~~~~~~~~\n~...........~\n~...........~\n~.....H.....~\n~...........~\n~~~~~~~~~~~~~", budget: 6 }
+        ];
+        let scores = new Array(LEVELS.length).fill(null);
+
+        function init() {
+            const list = document.getElementById("levels-list");
+            LEVELS.forEach((lv, i) => {
+                const btn = document.createElement("button");
+                btn.className = "level-btn"; btn.id = "btn-lv-" + i; btn.disabled = true;
+                btn.innerHTML = lv.name + " <span class=\"level-score\" id=\"score-lv-" + i + "\">-</span>";
+                btn.onclick = () => loadLevel(i);
+                list.appendChild(btn);
+            });
+        }
+        function startCompetition() {
+            document.getElementById("cover").style.display = "none";
+            competitionStarted = true;
+            document.querySelectorAll(".level-btn").forEach(btn => btn.disabled = false);
+            timerInterval = setInterval(() => {
+                timeLeft--; updateTimerDisplay();
+                if (timeLeft <= 0) endCompetition();
+            }, 1000);
+            loadLevel(0);
+        }
+        function updateTimerDisplay() {
+            const m = Math.floor(timeLeft / 60).toString().padStart(2, "0");
+            const s = (timeLeft % 60).toString().padStart(2, "0");
+            document.getElementById("timer").innerText = m + ":" + s;
+        }
+        function endCompetition() {
+            clearInterval(timerInterval); document.getElementById("timer").innerText = "00:00";
+            document.getElementById("cover").style.display = "flex";
+            document.getElementById("cover").innerHTML = "<h2>比赛结束！</h2><p>你的总分是: " + calculateTotal() + "</p>";
+            document.getElementById("export-btn").style.display = "block";
+            document.querySelectorAll(".level-btn").forEach(btn => btn.disabled = true);
+            document.getElementById("game-frame").src = "about:blank";
+        }
+        function loadLevel(i) {
+            if (!competitionStarted || timeLeft <= 0) return;
+            currentLevel = i;
+            document.getElementById("status-msg").innerText = "正在游玩: " + LEVELS[i].name;
+            const frame = document.getElementById("game-frame");
+            const lvData = encodeURIComponent(JSON.stringify(LEVELS[i]));
+            frame.src = "enclose.horse.html?customLevel=" + lvData + "&lvIndex=" + i;
+        }
+        function calculateTotal() {
+            const t = scores.reduce((s, c) => s + (c || 0), 0);
+            document.getElementById("total-score").innerText = t;
+            return t;
+        }
+        window.addEventListener("message", (e) => {
+            if (e.data && e.data.type === "GAME_OVER") {
+                const i = e.data.lvIndex; const sc = parseInt(e.data.score, 10);
+                if (i !== currentLevel || isNaN(sc)) return;
+                if (scores[i] === null || sc > scores[i]) {
+                    scores[i] = sc;
+                    document.getElementById("score-lv-" + i).innerText = sc + " 分";
+                    calculateTotal();
+                }
+            }
+        });
+        function exportScore() {
+            const str = JSON.stringify({ t: calculateTotal(), s: scores });
+            const hash = btoa(str).split("").reverse().join("");
+            prompt("这是你的成绩代码，请发送给组织者：", hash);
+        }
+        init();
+    </script>
+</body>
+
+</html>
